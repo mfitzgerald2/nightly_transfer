@@ -1,0 +1,77 @@
+name: Build Executables
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller smbprotocol
+
+      - name: Build .exe
+        run: |
+          pyinstaller --onefile --windowed nightly_transfer.py
+
+      - name: Upload .exe artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: nightly_transfer-windows
+          path: dist/nightly_transfer.exe
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install py2app smbprotocol
+
+      - name: Create setup.py
+        run: |
+          echo "
+          from setuptools import setup
+          APP = ['nightly_transfer.py']
+          DATA_FILES = []
+          OPTIONS = {
+              'argv_emulation': True,
+              'packages': ['smbprotocol'],
+          }
+          setup(
+              app=APP,
+              data_files=DATA_FILES,
+              options={'py2app': OPTIONS},
+              setup_requires=['py2app'],
+          )
+          " > setup.py
+
+      - name: Build .app
+        run: python setup.py py2app
+
+      - name: Upload .app artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: nightly_transfer-macos
+          path: dist/nightly_transfer.app
